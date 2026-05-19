@@ -41,3 +41,4 @@ mlruns/
 *.npz
 *.pkl
 *.pickle
+*.pth.tar
