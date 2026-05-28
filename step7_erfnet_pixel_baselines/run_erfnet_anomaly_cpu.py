@@ -71,6 +71,10 @@ def fpr_at_95_tpr(scores, labels):
     return float(fpr[np.argmax(tpr >= 0.95)])
 
 
+# ERFNet returns per-class pixel scores.
+# For anomaly segmentation, we do not train a new anomaly class.
+# Instead, post-hoc methods convert the model output into one anomaly score per pixel.
+# Higher anomaly score means the pixel is more likely to be out-of-distribution.
 def compute_anomaly_score(logits, method):
     """
     Compute pixel-wise anomaly scores from ERFNet outputs.
@@ -135,6 +139,9 @@ def load_my_state_dict(model, state_dict):
     return model
 
 
+# The anomaly datasets do not all use the same label encoding.
+# This helper normalizes the masks into one common binary convention:
+# 1 = anomaly/OOD pixel, 0 = normal in-distribution pixel, 255 = ignored pixel.
 def prepare_ground_truth_mask(path_gt):
     """
     Load and convert the anomaly ground-truth mask into binary format.
@@ -164,6 +171,9 @@ def prepare_ground_truth_mask(path_gt):
     return ood_gts
 
 
+# Each anomaly image has a corresponding mask in labels_masks/.
+# Some datasets store images as jpg/webp while the masks are png, so we fix
+# the extension here before loading the ground-truth mask.
 def infer_ground_truth_path(image_path):
     """
     Infer the corresponding ground-truth mask path from the image path.
@@ -186,6 +196,8 @@ def infer_ground_truth_path(image_path):
     return path_gt
 
 
+# Store every run as a CSV row so results from multiple datasets and methods
+# can be directly used in the final project table.
 def append_result_to_csv(output_csv, dataset_name, method, auprc, fpr95):
     """
     Append one experiment result to a CSV file.
@@ -312,6 +324,9 @@ def main():
     ood_gts = np.array(ood_gts_list)
     anomaly_scores = np.array(anomaly_score_list)
 
+    # Evaluation is done as binary pixel-level anomaly detection.
+    # OOD pixels are positives, normal pixels are negatives.
+    # Ignore pixels are excluded because they are neither OOD nor in-distribution.
     ood_mask = ood_gts == 1
     ind_mask = ood_gts == 0
 
@@ -324,6 +339,8 @@ def main():
     val_out = np.concatenate((ind_out, ood_out))
     val_label = np.concatenate((ind_label, ood_label))
 
+    # AuPRC is important for anomaly segmentation because anomaly pixels are rare.
+    # FPR95 measures the false-positive rate when 95% of anomaly pixels are detected.
     prc_auc = average_precision_score(val_label, val_out)
     fpr95 = fpr_at_95_tpr(val_out, val_label)
 
@@ -333,6 +350,8 @@ def main():
     print(f"AUPRC score: {auprc_percent}")
     print(f"FPR@TPR95: {fpr95_percent}")
 
+    # Store every run as a CSV row so results from multiple datasets and methods
+    # can be directly used in the final project table.
     append_result_to_csv(
         output_csv=args.output_csv,
         dataset_name=args.dataset_name,
