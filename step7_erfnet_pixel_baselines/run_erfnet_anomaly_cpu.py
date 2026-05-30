@@ -75,7 +75,7 @@ def fpr_at_95_tpr(scores, labels):
 # For anomaly segmentation, we do not train a new anomaly class.
 # Instead, post-hoc methods convert the model output into one anomaly score per pixel.
 # Higher anomaly score means the pixel is more likely to be out-of-distribution.
-def compute_anomaly_score(logits, method):
+def compute_anomaly_score(logits, method, temperature=1.0):
     """
     Compute pixel-wise anomaly scores from ERFNet outputs.
 
@@ -84,6 +84,9 @@ def compute_anomaly_score(logits, method):
             torch.Tensor with shape [1, C, H, W].
         method:
             One of: msp, maxlogit, entropy.
+        temperature:
+            Softmax temperature used for MSP and Entropy.
+            Logits are divided by this value before softmax.
 
     Returns:
         np.ndarray with shape [H, W].
@@ -92,21 +95,26 @@ def compute_anomaly_score(logits, method):
     if logits.dim() != 4:
         raise ValueError(f"Expected logits with shape [B, C, H, W], got {logits.shape}")
 
+    if temperature <= 0:
+        raise ValueError("Temperature must be positive.")
+
+    scaled_logits = logits / temperature
+
     if method == "msp":
-        # Maximum Softmax Probability:
-        # low confidence => high anomaly score.
-        probs = torch.softmax(logits, dim=1)
+        # MSP uses calibrated softmax probabilities.
+        # Lower confidence means higher anomaly score.
+        probs = torch.softmax(scaled_logits, dim=1)
         score = 1.0 - torch.max(probs, dim=1).values
 
     elif method == "maxlogit":
-        # MaxLogit:
-        # lower maximum logit => more anomalous.
+        # MaxLogit works directly on raw logits, so we keep it independent
+        # from temperature scaling.
         score = -torch.max(logits, dim=1).values
 
     elif method == "entropy":
-        # Predictive entropy:
-        # higher uncertainty => more anomalous.
-        probs = torch.softmax(logits, dim=1)
+        # Entropy measures uncertainty in the softmax distribution.
+        # Higher entropy means the model is more uncertain.
+        probs = torch.softmax(scaled_logits, dim=1)
         score = -torch.sum(probs * torch.log(probs + 1e-12), dim=1)
 
     else:
@@ -240,6 +248,13 @@ def main():
     )
 
     parser.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="Softmax temperature used for MSP/Entropy confidence calibration.",
+    )
+
+    parser.add_argument(
         "--dataset-name",
         default="unknown",
         help="Name of the evaluated anomaly dataset.",
@@ -260,6 +275,7 @@ def main():
     print(f"Using device: {device}")
     print(f"Using anomaly scoring method: {args.method}")
     print(f"Dataset name: {args.dataset_name}")
+    print(f"Using temperature: {args.temperature}")
 
     modelpath = os.path.join(args.loadDir, args.loadModel)
     weightspath = os.path.join(args.loadDir, args.loadWeights)
@@ -297,7 +313,11 @@ def main():
         with torch.no_grad():
             result = model(images)
 
-        anomaly_result = compute_anomaly_score(result, args.method)
+        anomaly_result = compute_anomaly_score(
+            result,
+            args.method,
+            temperature=args.temperature,
+        )
 
         path_gt = infer_ground_truth_path(path)
 
@@ -352,10 +372,17 @@ def main():
 
     # Store every run as a CSV row so results from multiple datasets and methods
     # can be directly used in the final project table.
+    method_label = args.method
+
+    if args.method in ["msp", "entropy"] and args.temperature != 1.0:
+        method_label = f"{args.method}_t{args.temperature}"
+
+    # Store every run as a CSV row so results from multiple datasets and methods
+    # can be directly used in the final project table.
     append_result_to_csv(
         output_csv=args.output_csv,
         dataset_name=args.dataset_name,
-        method=args.method,
+        method=method_label,
         auprc=auprc_percent,
         fpr95=fpr95_percent,
     )
