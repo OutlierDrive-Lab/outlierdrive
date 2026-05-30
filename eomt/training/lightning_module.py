@@ -63,6 +63,21 @@ class LightningModule(lightning.LightningModule):
         super().__init__()
 
         self.network = network
+        # My Changes : freezing all layers except the head
+        for param in self.network.parameters():
+            param.requires_grad = False
+
+        for name, param in self.network.named_parameters():
+            if name.startswith("class_head") or name.startswith("mask_head"):
+                param.requires_grad = True
+
+        print("Trainable parameters:")
+        for name, param in self.network.named_parameters():
+            if param.requires_grad:
+                print(name)
+
+        # -------- END of my changes
+
         self.img_size = img_size
         self.num_classes = num_classes
         self.attn_mask_annealing_enabled = attn_mask_annealing_enabled
