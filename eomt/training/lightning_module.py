@@ -68,7 +68,7 @@ class LightningModule(lightning.LightningModule):
             param.requires_grad = False
 
         for name, param in self.network.named_parameters():
-            if name.startswith("class_head") or name.startswith("mask_head"):
+            if name.startswith("class_head") or name.startswith("mask_head") or name.startswith("upscale"):
                 param.requires_grad = True
 
         print("Trainable parameters:")
