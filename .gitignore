@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 venv/
 env/
+.conda/
+.mplconfig/
 .ipynb_checkpoints/
 
 # OS / IDE
@@ -18,7 +20,9 @@ datasets/
 Cityscapes/
 cityscapes/
 Anomaly_Validation_Datasets/
+Validation_Dataset
 *.zip
+Miniconda3-*.sh
 
 # Models / checkpoints
 checkpoints/
