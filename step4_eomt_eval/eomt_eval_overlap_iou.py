@@ -35,7 +35,6 @@ IGNORE_INDEX = 255
 
 # EoMT COCO internal output id -> Cityscapes trainId
 #
-# This is the approximate mapping you used in the notebook.
 # It assumes the COCO-trained model outputs EoMT's internal COCO/panoptic ids,
 # not raw COCO category ids.
 DEFAULT_COCO_TO_CITYSCAPES_TRAINID = {
@@ -343,31 +342,6 @@ def save_single_model_csv(model_name, eval_class_ids, class_iou, mean_iou, pixel
         writer.writerow([model_name, "Pixel Accuracy", pixel_accuracy * 100.0])
 
 
-def save_comparison_csv(results, eval_class_ids, csv_path):
-    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-
-    model_names = list(results.keys())
-
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-
-        header = ["class_id", "class_name"]
-        for model_name in model_names:
-            header.append(f"{model_name}_iou_percent")
-        writer.writerow(header)
-
-        for cid in eval_class_ids:
-            row = [cid, CITYSCAPES_CLASSES[cid]]
-            for model_name in model_names:
-                value = results[model_name]["class_iou"][cid]
-                row.append("" if np.isnan(value) else value * 100.0)
-            writer.writerow(row)
-
-        writer.writerow([])
-        writer.writerow(["metric"] + model_names)
-        writer.writerow(["mIoU"] + [results[m]["mean_iou"] * 100.0 for m in model_names])
-        writer.writerow(["Pixel Accuracy"] + [results[m]["pixel_accuracy"] * 100.0 for m in model_names])
-
 
 def parse_class_ids(text):
     if text is None:
@@ -600,15 +574,6 @@ def evaluate(args):
             csv_path=csv_path,
         )
         print("Saved:", csv_path)
-
-    if len(results) >= 2:
-        comparison_path = os.path.join(args.output_dir, "comparison_overlap_iou.csv")
-        save_comparison_csv(
-            results=results,
-            eval_class_ids=eval_class_ids,
-            csv_path=comparison_path,
-        )
-        print("Saved:", comparison_path)
 
 
 def parse_args():
