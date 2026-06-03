@@ -1,0 +1,4 @@
+model,checkpoint,dataset,method,temperature,miou,auprc,fpr95,num_images,num_ood_pixels,num_ind_pixels
+EoMT,eomt_coco,RoadAnomaly21,msp_t0.5,0.5,,5.85757918040927,66.40280889543419,1,15288,890884
+EoMT,eomt_coco,RoadAnomaly21,msp_t0.75,0.75,,5.8728084362174835,66.40146191872343,1,15288,890884
+EoMT,eomt_coco,RoadAnomaly21,msp_t1.1,1.1,,5.880683055117789,66.40011494201265,1,15288,890884
