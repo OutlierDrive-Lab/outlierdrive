@@ -1,0 +1,21 @@
+model,class_id,class_name,iou_percent
+cityscapes_trained,0,road,98.45960135633244
+cityscapes_trained,1,sidewalk,88.38805218001369
+cityscapes_trained,2,building,94.67827439403507
+cityscapes_trained,3,wall,66.58326266725277
+cityscapes_trained,4,fence,66.43071173398764
+cityscapes_trained,6,traffic light,77.52966821998713
+cityscapes_trained,7,traffic sign,83.0264784193118
+cityscapes_trained,8,vegetation,93.85563993278807
+cityscapes_trained,10,sky,95.68289116964206
+cityscapes_trained,11,person,86.62162738578203
+cityscapes_trained,13,car,95.72636649986853
+cityscapes_trained,14,truck,81.87199153052458
+cityscapes_trained,15,bus,90.50413644412662
+cityscapes_trained,16,train,77.79581677875174
+cityscapes_trained,17,motorcycle,76.29840005431215
+cityscapes_trained,18,bicycle,83.10481048550373
+
+model,metric,value_percent
+cityscapes_trained,mIoU,84.78485807826375
+cityscapes_trained,Pixel Accuracy,97.13113636216343

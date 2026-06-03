@@ -1,0 +1,21 @@
+model,class_id,class_name,iou_percent
+coco_trained,0,road,94.15744270150395
+coco_trained,1,sidewalk,68.03253733163103
+coco_trained,2,building,80.85556501719826
+coco_trained,3,wall,47.177327989361586
+coco_trained,4,fence,50.29859926317811
+coco_trained,6,traffic light,62.79533023602014
+coco_trained,7,traffic sign,4.427493848745918
+coco_trained,8,vegetation,89.72760562767877
+coco_trained,10,sky,90.73292443047986
+coco_trained,11,person,76.38653487007926
+coco_trained,13,car,84.54528010787395
+coco_trained,14,truck,29.51566964508788
+coco_trained,15,bus,71.79328423396348
+coco_trained,16,train,13.70575761890651
+coco_trained,17,motorcycle,66.8241616845566
+coco_trained,18,bicycle,74.74462351396105
+
+model,metric,value_percent
+coco_trained,mIoU,62.85750863251414
+coco_trained,Pixel Accuracy,90.68131284329579
