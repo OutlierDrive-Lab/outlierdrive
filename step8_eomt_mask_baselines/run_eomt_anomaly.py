@@ -68,6 +68,15 @@ def parse_int_list(value: str | None) -> list[int] | None:
     return [int(item.strip()) for item in value.split(",") if item.strip()]
 
 
+def parse_float_list(value: str | None) -> list[float] | None:
+    if value is None or value.strip() == "":
+        return None
+    parsed = [float(item.strip()) for item in value.split(",") if item.strip()]
+    if any(item <= 0 for item in parsed):
+        raise argparse.ArgumentTypeError("Temperature values must be positive.")
+    return parsed
+
+
 def ensure_eomt_on_path(repo_root: Path) -> None:
     eomt_root = repo_root / "eomt"
     if str(eomt_root) not in sys.path:
@@ -712,6 +721,138 @@ def evaluate_dataset_all_methods(
     return results
 
 
+def collect_temperature_scores_for_dataset(
+    *,
+    model,
+    device,
+    image_paths: Iterable[Path],
+    method: str,
+    temperatures: list[float],
+    max_images: int | None,
+    logits_dir: Path | None,
+):
+    import numpy as np
+
+    if method not in {"msp", "entropy"}:
+        raise ValueError("--temperatures is only supported for MSP or entropy scores.")
+
+    score_parts = {temperature: [] for temperature in temperatures}
+    label_parts = []
+    processed = 0
+    num_ood_pixels = 0
+    num_ind_pixels = 0
+
+    for image_path in image_paths:
+        if max_images is not None and processed >= max_images:
+            break
+
+        gt_path = infer_ground_truth_path(image_path)
+        if not gt_path.exists():
+            print(f"Warning: missing ground-truth mask, skipping: {gt_path}")
+            continue
+
+        image = load_rgb_image(image_path)
+        _, logits = infer_eomt_outputs(model, image, method, device, temperature=1.0)
+        if logits is None:
+            raise RuntimeError("Temperature scaling requires saved pixel logits.")
+
+        reference_shape = logits.shape[-2:]
+        gt = prepare_ground_truth_mask(gt_path, target_shape=reference_shape)
+
+        if 1 not in np.unique(gt):
+            continue
+
+        ind_mask = gt == 0
+        ood_mask = gt == 1
+        if not np.any(ind_mask) or not np.any(ood_mask):
+            continue
+
+        for temperature in temperatures:
+            score_array = compute_anomaly_score(logits, method, temperature).numpy()
+            score_parts[temperature].extend([score_array[ind_mask], score_array[ood_mask]])
+
+        ind_count = int(np.count_nonzero(ind_mask))
+        ood_count = int(np.count_nonzero(ood_mask))
+        label_parts.extend(
+            [
+                np.zeros(ind_count, dtype=np.uint8),
+                np.ones(ood_count, dtype=np.uint8),
+            ]
+        )
+        num_ind_pixels += ind_count
+        num_ood_pixels += ood_count
+        processed += 1
+
+        if logits_dir is not None:
+            save_logits(logits_dir, image_path, logits)
+
+        print(f"[{processed}] processed {image_path.name}")
+
+    if not label_parts:
+        raise RuntimeError("No valid images with anomaly and in-distribution pixels were processed.")
+
+    labels = np.concatenate(label_parts)
+    return (
+        {temperature: np.concatenate(parts) for temperature, parts in score_parts.items()},
+        labels,
+        processed,
+        num_ood_pixels,
+        num_ind_pixels,
+    )
+
+
+def evaluate_dataset_temperatures(
+    *,
+    model,
+    device,
+    dataset_root: Path,
+    dataset: str,
+    input_glob: str | None,
+    method: str,
+    temperatures: list[float],
+    checkpoint_name: str,
+    miou: str | float,
+    max_images: int | None,
+    logits_dir: Path | None,
+) -> list[DatasetResult]:
+    from sklearn.metrics import average_precision_score
+
+    image_paths = dataset_image_paths(dataset_root, dataset, input_glob)
+    if not image_paths:
+        raise FileNotFoundError(f"No images found for dataset {dataset}.")
+
+    scores_by_temperature, labels, processed, num_ood, num_ind = collect_temperature_scores_for_dataset(
+        model=model,
+        device=device,
+        image_paths=image_paths,
+        method=method,
+        temperatures=temperatures,
+        max_images=max_images,
+        logits_dir=logits_dir,
+    )
+
+    results = []
+    for temperature in temperatures:
+        scores = scores_by_temperature[temperature]
+        method_label = method if temperature == 1.0 else f"{method}_t{temperature:g}"
+        results.append(
+            DatasetResult(
+                checkpoint=checkpoint_name,
+                dataset=dataset,
+                method=method_label,
+                temperature=temperature,
+                auprc=float(average_precision_score(labels, scores) * 100.0),
+                fpr95=float(fpr_at_95_tpr(scores, labels) * 100.0),
+                num_images=processed,
+                num_ood_pixels=num_ood,
+                num_ind_pixels=num_ind,
+                miou=miou,
+            )
+        )
+
+    return results
+
+
 def append_result(path: Path, result: DatasetResult) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
@@ -760,6 +901,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-glob", help="Optional explicit image glob. Overrides --dataset-root/--dataset discovery.")
     parser.add_argument("--method", required=True, choices=METHOD_CHOICES)
     parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument(
+        "--temperatures",
+        type=parse_float_list,
+        help="Comma-separated MSP/entropy temperatures to evaluate from one forward pass, for example 0.5,0.75,1.0,1.1.",
+    )
     parser.add_argument("--miou", default="", help="Optional mIoU value to repeat in the output row.")
     parser.add_argument("--output-csv", default=Path("step8_eomt_mask_baselines/eomt_anomaly_results.csv"), type=Path)
     parser.add_argument("--img-size", type=parse_img_size, help="EoMT inference image size as HxW. Defaults to checkpoint shape.")
@@ -792,7 +938,23 @@ def main() -> None:
     )
 
     logits_dir = args.logits_dir if args.save_logits else None
-    if args.method == "all":
+    if args.temperatures is not None:
+        if args.method == "all":
+            raise ValueError("--temperatures cannot be combined with --method all.")
+        results = evaluate_dataset_temperatures(
+            model=model,
+            device=device,
+            dataset_root=args.dataset_root,
+            dataset=args.dataset,
+            input_glob=args.input_glob,
+            method=args.method,
+            temperatures=args.temperatures,
+            checkpoint_name=args.checkpoint_name,
+            miou=args.miou,
+            max_images=args.max_images,
+            logits_dir=logits_dir,
+        )
+    elif args.method == "all":
         results = evaluate_dataset_all_methods(
             model=model,
             device=device,

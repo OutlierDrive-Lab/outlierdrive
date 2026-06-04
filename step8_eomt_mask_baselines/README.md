@@ -114,6 +114,19 @@ implemented and smoke-tested separately, but it is not part of
 `eomt_anomaly_results.csv` unless the temperature sweep is run and reported as an
 extra baseline.
 
+Additional result files:
+
+```text
+step8_eomt_mask_baselines/eomt_temperature_results.csv
+step8_eomt_mask_baselines/eomt_all_results.csv
+```
+
+`eomt_temperature_results.csv` contains the 60-row MSP temperature-scaling sweep:
+3 checkpoints x 5 datasets x 4 temperatures. `eomt_all_results.csv` keeps both
+the 60-row anomaly baseline table and the 60-row temperature-scaling table in one
+file, with a `result_group` column to distinguish the original anomaly baselines
+from the temperature-scaling rows.
+
 The dataset folder is named `RoadObsticle21` in the provided validation archive.
 The raw CSV keeps that exact folder name, but the report-ready table uses the
 clean display name `RoadObstacle21`.
@@ -193,15 +206,17 @@ python step8_eomt_mask_baselines/run_eomt_anomaly.py \
   --output-csv step8_eomt_mask_baselines/eomt_temperature_results.csv
 ```
 
-There is also an editable wrapper:
+There is also an editable wrapper. By default it evaluates MSP temperature
+scaling for all three checkpoints and all five anomaly datasets at
+`0.5, 0.75, 1.0, 1.1`, producing 60 rows:
 
 ```bash
 bash step8_eomt_mask_baselines/run_temperature_sweep.sh
 ```
 
-Only claim temperature-scaling results if you run the sweep and use
-`eomt_temperature_results.csv` or another final temperature-scaling CSV. The
-small `eomt_temperature_smoke_results.csv` file is only a sanity check.
+The final temperature-scaling rows should be reported from
+`eomt_temperature_results.csv` or another full sweep output. The small
+`eomt_temperature_smoke_results.csv` file is only a sanity check.
 
 ## Method Notes
 
