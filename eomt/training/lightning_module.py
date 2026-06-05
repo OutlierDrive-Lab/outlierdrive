@@ -65,25 +65,18 @@ class LightningModule(lightning.LightningModule):
         self.network = network
         # My Changes : freezing all layers except the head
         for param in self.network.parameters():
-            param.requires_grad = False
+           param.requires_grad = False
 
         for name, param in self.network.named_parameters():
-            train_head = (
-            name.startswith("class_head") or
-            name.startswith("mask_head") or
-            name.startswith("upscale") or
-            name.startswith("q")
-        )
-
-        train_last_attention = (
-            name.startswith("encoder.backbone.blocks.10.attn.qkv") or
-            name.startswith("encoder.backbone.blocks.10.attn.proj") or
-            name.startswith("encoder.backbone.blocks.11.attn.qkv") or
-            name.startswith("encoder.backbone.blocks.11.attn.proj")
-        )
-
-        if train_head or train_last_attention:
-            param.requires_grad = True
+            if (
+                name.startswith("class_head")
+                or name.startswith("mask_head")
+                or name.startswith("upscale")
+                or name.startswith("q")
+                or name.startswith("encoder.backbone.blocks.10.attn")
+                or name.startswith("encoder.backbone.blocks.11.attn")
+            ):
+                param.requires_grad = True
 
             #if name.startswith("class_head") or name.startswith("mask_head") or name.startswith("upscale") or name.startswith("q"):
                 #param.requires_grad = True
