@@ -145,6 +145,13 @@ class LightningModule(lightning.LightningModule):
         ).tolist()
 
         for name, param in reversed(list(self.named_parameters())):
+            
+            # MY CHANGES
+            # Skip frozen parameters
+            if not param.requires_grad:
+                continue
+            #END MY CHNAGES
+
             lr = self.lr
 
             if name.replace("network.encoder.backbone.", "") in encoder_param_names:
@@ -171,6 +178,11 @@ class LightningModule(lightning.LightningModule):
                     and ((not self.llrd_l2_enabled) or (self.lr_mult != 1.0))
                 ):
                     lr = self.lr
+                #MY CHNGAES
+                if ".attn.qkv." in name or ".attn.proj." in name:
+                    lr *= 0.1   
+
+                #END MY CHANGES
 
                 backbone_param_groups.append(
                     {"params": [param], "lr": lr, "name": name}
@@ -181,6 +193,12 @@ class LightningModule(lightning.LightningModule):
                 )
 
         param_groups = backbone_param_groups + other_param_groups
+        #MY CHNGAES
+        print("Optimizer parameter groups:")
+        for group in param_groups:
+            print(group["name"], "lr =", group["lr"])
+
+        #END MY CHANGES
         optimizer = AdamW(param_groups, weight_decay=self.weight_decay)
 
         scheduler = TwoStageWarmupPolySchedule(
