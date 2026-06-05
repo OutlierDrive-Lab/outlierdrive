@@ -68,8 +68,25 @@ class LightningModule(lightning.LightningModule):
             param.requires_grad = False
 
         for name, param in self.network.named_parameters():
-            if name.startswith("class_head") or name.startswith("mask_head") or name.startswith("upscale") or name.startswith("q"):
-                param.requires_grad = True
+            train_head = (
+            name.startswith("class_head") or
+            name.startswith("mask_head") or
+            name.startswith("upscale") or
+            name.startswith("q")
+        )
+
+        train_last_attention = (
+            name.startswith("encoder.backbone.blocks.10.attn.qkv") or
+            name.startswith("encoder.backbone.blocks.10.attn.proj") or
+            name.startswith("encoder.backbone.blocks.11.attn.qkv") or
+            name.startswith("encoder.backbone.blocks.11.attn.proj")
+        )
+
+        if train_head or train_last_attention:
+            param.requires_grad = True
+
+            #if name.startswith("class_head") or name.startswith("mask_head") or name.startswith("upscale") or name.startswith("q"):
+                #param.requires_grad = True
 
         print("Trainable parameters:")
         for name, param in self.network.named_parameters():
