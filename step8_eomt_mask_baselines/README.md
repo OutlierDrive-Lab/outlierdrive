@@ -32,15 +32,16 @@ The current branch contains the COCO panoptic config:
 eomt/configs/dinov2/coco/panoptic/eomt_base_640_2x.yaml
 ```
 
-This branch currently has the COCO config, Cityscapes config, EoMT checkpoints,
-and extracted anomaly validation datasets needed for smoke testing.
+The branch contains the COCO and Cityscapes config files used by the scripts.
+Checkpoint files and extracted anomaly validation datasets stay local and are
+not tracked by git.
 
 The model construction and sliding-window inference path follows the Step 4
 notebooks on this branch, especially:
 
 ```text
-step4_eomt_eval/predictions_eomt_city.ipynb
-step4_eomt_eval/predictions_eomt_coco.ipynb
+step4_eomt_eval/test_eval_pipeline/predictions_eomt_city.ipynb
+step4_eomt_eval/test_eval_pipeline/predictions_eomt_coco.ipynb
 ```
 
 The runner does not instantiate EoMT dataset modules for anomaly evaluation.

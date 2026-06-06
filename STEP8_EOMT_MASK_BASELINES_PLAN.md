@@ -1,6 +1,6 @@
 # Step 8 EoMT Mask-Based Anomaly Baselines Plan
 
-This document is a handoff plan for completing Step 8 of the project: evaluating EoMT mask-based anomaly segmentation baselines on the same anomaly validation datasets used in Step 7.
+This document describes the Step 8 evaluation plan for EoMT mask-based anomaly segmentation baselines on the same anomaly validation datasets used in Step 7.
 
 ## Goal
 
@@ -25,7 +25,10 @@ Important files already in this repository:
 - `eval/evalAnomaly.py`: Original ERFNet anomaly evaluation script. Use its dataset loop, ground-truth path handling, mask normalization, and metric logic as a reference.
 - `eval/README.md`: Explains the anomaly datasets and the original eval command.
 - `eomt/README.md`: Explains how to install EoMT requirements, load checkpoints, and run validation.
-- `eomt/inference.ipynb`: Shows EoMT inference and visualization. Use this as the main reference for EoMT model loading and semantic inference.
+- `step4_eomt_eval/test_eval_pipeline/predictions_eomt_city.ipynb`: Shows Cityscapes EoMT inference and prediction export.
+- `step4_eomt_eval/test_eval_pipeline/predictions_eomt_coco.ipynb`: Shows COCO EoMT inference and prediction export.
+- `step4_eomt_eval/eomt_eval_iou.py`: Scripted Cityscapes mIoU evaluation on all 19 trainId classes.
+- `step4_eomt_eval/eomt_eval_overlap_iou.py`: Scripted COCO-to-Cityscapes overlap evaluation with class mapping.
 - `eomt/training/lightning_module.py`: Contains key EoMT inference helpers:
   - `window_imgs_semantic`
   - `revert_window_logits_semantic`
@@ -54,25 +57,14 @@ The repository currently does not include the anomaly dataset archive or EoMT ch
 
 Step 8 should be implemented as normal Python scripts that can run from the terminal. JupyterLab is optional for visualization/debugging, but the final pipeline should not require notebooks.
 
-Current local state checked in this Cursor workspace:
+The repository does not track datasets or checkpoint files. A local environment must provide:
 
-- The agent can run terminal commands locally from `/Users/sadaf/outlierdrive`.
-- The default `python3` is `/Library/Frameworks/Python.framework/Versions/3.12/bin/python3`.
-- That Python is `Python 3.12.0a1`.
-- The default Python currently has `numpy`, `sklearn`, and `yaml`.
-- The default Python is missing `torch`, `torchvision`, `PIL/Pillow`, and `lightning`.
-- `conda` is not currently available in the shell.
-- The anomaly datasets are not present in the repo.
-- The EoMT `.bin` checkpoints are not present in the repo.
+- Python with the EoMT dependencies installed.
+- The anomaly validation datasets.
+- The EoMT checkpoint files.
+- The matching EoMT configuration files.
 
-Therefore, the current machine can be used immediately to:
-
-- Write and edit the Step 8 scripts.
-- Run syntax checks on scripts that do not import EoMT dependencies at import time.
-- Run unit tests for small pure-Python utilities such as CSV writing, ground-truth path inference, and metric helpers.
-- Inspect repository files and build the final command-line interface.
-
-The current machine cannot run EoMT inference yet until a proper Python environment and local input files are prepared.
+Without those local inputs, the scripts can still be syntax-checked and reviewed, but full EoMT inference cannot be reproduced.
 
 To run Step 8 locally, create an environment first. Since `conda` is not available right now, either install Miniconda as described in `eomt/README.md`, or create another stable Python environment that can install PyTorch and EoMT dependencies.
 
@@ -110,7 +102,7 @@ On this local macOS machine, CUDA should not be assumed. If PyTorch MPS is avail
 
 Recommended execution strategy:
 
-1. Develop the pipeline locally in Cursor as terminal scripts.
+1. Develop the pipeline as terminal scripts.
 2. Run small CPU/MPS smoke tests locally:
    - one checkpoint,
    - one dataset,
@@ -119,7 +111,7 @@ Recommended execution strategy:
 3. If local runtime is too slow, run the same script on JupyterLab, Colab, or another GPU machine. Do not rewrite the pipeline as notebook-only code.
 4. Keep notebooks only for visualization or exploratory debugging.
 
-The next AI should be explicit in its README that Step 8 can be launched from terminal, for example:
+The README should show that Step 8 can be launched from the terminal, for example:
 
 ```bash
 python step8_eomt_mask_baselines/run_eomt_anomaly.py \
@@ -294,7 +286,7 @@ Skip images that do not contain anomaly pixels, matching Step 7 behavior.
 
 ### Task 3: Implement EoMT Model Loading
 
-Use the loading logic from `eomt/inference.ipynb` rather than ERFNet.
+Use the EoMT loading and sliding-window inference logic from the Step 4 notebooks and scripts rather than ERFNet.
 
 The loader should:
 
@@ -657,7 +649,7 @@ Before considering Step 8 complete:
 - Full-size anomaly images can be memory heavy. Use batch size 1, sliding-window inference, and AMP on CUDA.
 - Temperature scaling should reuse saved logits to avoid repeating expensive model inference.
 
-## Recommended Order for the Next AI
+## Recommended Implementation Order
 
 1. Inspect the Step 7 runner from `origin/feature/erfnet-baselines` as read-only reference material.
 2. Create `step8_eomt_mask_baselines/run_eomt_anomaly.py`.
