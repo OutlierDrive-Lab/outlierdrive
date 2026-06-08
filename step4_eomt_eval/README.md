@@ -32,7 +32,7 @@ Notice that for executing the evaluation pipeline you do not need to unzip any d
 
 ## Run evaluation pipeline
 
-To evaluate EoMT Cityscapes trained model on all 19 classes, run the following command for **:
+To evaluate EoMT Cityscapes trained model on all 19 classes, run the following command on **eomt_eval_iou.py** script:
 
 ```bash
 python /content/outlierdrive/step4_eomt_eval/eomt_eval_iou.py \
@@ -41,5 +41,14 @@ python /content/outlierdrive/step4_eomt_eval/eomt_eval_iou.py \
 ```
 Replace `/path/to/dataset` with the directory containing the dataset zip files and set the directory for the tested checkpoints. If necessary, set the directory for saving the output. The script saves it in .csv format automatically.
 
+Similarly, for evaluation of COCO-trained model on the overlapped class space, run this command on **eomt_eval_overlap_iou.py** script. You should manually specify the image size and q size in order to match the COCO-trained model architecture.
+
+```bash
+python /content/outlierdrive/step4_eomt_eval/eomt_eval_iou.py \
+  --config /eomt/configs/dinov2/cityscapes/semantic/eomt_base_640.yaml \
+  --data-path /path/to/dataset \
+  --img-size 640 640 \
+  --num-q 200 \
+```
 
 
