@@ -1,6 +1,6 @@
 # Step 4 — EOMT Evaluation
 
-This folder contains the evaluation pipeline for Cityscapes-trained EoMT model and COCO-trained EoMT model versions. It includes scripts for computing IoU scores, folders with CSV result files and test pipeline notebooks, and a notebook for visualization.
+This folder contains the evaluation pipeline for Cityscapes-trained EoMT model and COCO-trained EoMT model versions. It includes scripts for computing IoU scores, folders with CSV result files, test pipeline notebooks and a notebook for visualization.
 
 - **test_eval_pipeline** shows the process of building evaluation pipeline through careful exploration of the Cityscapes dataset. It considers both pretrained model versions and builds a map for a class space for COCO-trained EoMT model.
 

@@ -1,8 +1,8 @@
 # ------------------------------------------------------------
 # EoMT overlap IoU evaluation on Cityscapes validation set
 #
-# It runs inference directly from checkpoint(s), maps predictions if needed,
-# and evaluates IoU on the Cityscapes classes that overlap with COCO.
+# It runs inference on the mapped class space,
+# and evaluates IoU on the Cityscapes.
 #
 # ------------------------------------------------------------
 
@@ -35,7 +35,7 @@ IGNORE_INDEX = 255
 
 # EoMT COCO internal output id -> Cityscapes trainId
 #
-# It assumes the COCO-trained model outputs EoMT's internal COCO/panoptic ids,
+# We investigated that the COCO-trained model outputs EoMT's internal COCO/panoptic ids,
 # not raw COCO category ids.
 DEFAULT_COCO_TO_CITYSCAPES_TRAINID = {
     0: 11,     # person -> person
@@ -68,10 +68,7 @@ DEFAULT_COCO_TO_CITYSCAPES_TRAINID = {
 
 
 def setup_repo_path(repo_root: str):
-    """
-    Makes sure local EoMT modules like datasets.cityscapes_semantic
-    are imported from the repo, not from external packages.
-    """
+    
     os.chdir(repo_root)
 
     if repo_root in sys.path:
@@ -79,7 +76,6 @@ def setup_repo_path(repo_root: str):
 
     sys.path.insert(0, repo_root)
 
-    # Avoid conflict with HuggingFace datasets package.
     for name in list(sys.modules):
         if name == "datasets" or name.startswith("datasets."):
             del sys.modules[name]
@@ -91,9 +87,7 @@ def load_yaml_config(config_path: str):
 
 
 def load_cityscapes_data(city_config, data_path, batch_size=1, num_workers=0, img_size=None):
-    """
-    Loads Cityscapes validation data using the Cityscapes semantic config.
-    """
+    
     data_module_name, class_name = city_config["data"]["class_path"].rsplit(".", 1)
     data_module_cls = getattr(importlib.import_module(data_module_name), class_name)
 
@@ -117,10 +111,7 @@ def load_cityscapes_data(city_config, data_path, batch_size=1, num_workers=0, im
 
 
 def build_model(config, device, img_size, num_classes, num_q=None):
-    """
-    Dynamically builds an EoMT semantic model from a config.
-    num_classes, img_size, and num_q must match the checkpoint.
-    """
+    
     warnings.filterwarnings(
         "ignore",
         message=r".*Attribute 'network' is an instance of `nn\.Module` and is already saved during checkpointing.*",
@@ -179,9 +170,7 @@ def build_model(config, device, img_size, num_classes, num_q=None):
 
 
 def load_weights(model, checkpoint_path, device):
-    """
-    Loads .ckpt or .bin weights.
-    """
+    
     ckpt = torch.load(
         checkpoint_path,
         map_location=device,
@@ -206,17 +195,7 @@ def load_weights(model, checkpoint_path, device):
 
 
 def infer_semantic(img, target, model, city_data, device):
-    """
-    Runs EoMT semantic inference on one Cityscapes image.
-
-    Returns:
-        pred_array:
-            Predicted class-id mask from the current model head.
-            For Cityscapes model: Cityscapes trainIds.
-            For COCO model: COCO/EoMT internal output ids.
-        target_array:
-            Cityscapes GT trainId mask.
-    """
+    
     model.eval()
 
     use_cuda_amp = str(device).startswith("cuda")
@@ -261,10 +240,9 @@ def infer_semantic(img, target, model, city_data, device):
 
 def map_coco_prediction_to_cityscapes(pred_array, mapping):
     """
-    Maps COCO/EoMT prediction ids to Cityscapes trainIds.
+    Map COCO/EoMT prediction ids to Cityscapes trainIds.
     Unmapped prediction classes become IGNORE_INDEX.
 
-    Important:
     During IoU computation, pred=255 is NOT ignored if the GT class is one of the
     evaluated overlap classes. It counts as a wrong prediction.
     """
@@ -278,7 +256,7 @@ def map_coco_prediction_to_cityscapes(pred_array, mapping):
 
 def compute_overlap_stats(gt_city, pred_city, eval_class_ids):
     """
-    Computes per-class intersection/union on selected Cityscapes classes.
+    Compute per-class intersection/union on selected Cityscapes classes.
 
     Pixels with GT outside eval_class_ids are ignored.
     Pixels with GT inside eval_class_ids and pred=IGNORE_INDEX are counted as wrong.
@@ -370,11 +348,7 @@ def evaluate_model(
     max_images,
     debug_unique_preds,
 ):
-    """
-    model_kind:
-        "cityscapes": predictions are already Cityscapes trainIds.
-        "coco": predictions must be mapped using DEFAULT_COCO_TO_CITYSCAPES_TRAINID.
-    """
+    
     print("\n=======================================")
     print("Evaluating:", model_name)
     print("Model kind:", model_kind)
@@ -506,7 +480,6 @@ def evaluate(args):
     eval_class_ids = parse_class_ids(args.eval_class_ids)
 
     if eval_class_ids is None:
-        # By default evaluate the Cityscapes classes that appear in the COCO mapping.
         eval_class_ids = sorted(set(DEFAULT_COCO_TO_CITYSCAPES_TRAINID.values()))
 
     for cid in eval_class_ids:

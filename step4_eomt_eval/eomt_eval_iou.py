@@ -1,11 +1,11 @@
 # ------------------------------------------------------------
-# EoMT semantic segmentation IoU evaluation on Cityscapes
+# Semantic segmentation evaluation pipeline of EOMT model on all 19 classes of Cityscapes
 #
-# Adapted from the original eval_iou.py idea:
+# I adapted it from the original eval_iou.py, idea:
 # - load model
-# - run inference on Cityscapes val set
+# - run inference on Cityscapes validation set
 # - compute per-class IoU and mIoU
-# - optionally save prediction masks
+# - save the results
 #
 # ------------------------------------------------------------
 
@@ -49,7 +49,7 @@ def setup_repo_path(repo_root: str):
 
     sys.path.insert(0, repo_root)
 
-    # Avoid conflict with HuggingFace datasets package.
+    
     for name in list(sys.modules):
         if name == "datasets" or name.startswith("datasets."):
             del sys.modules[name]
@@ -61,9 +61,7 @@ def load_yaml_config(config_path: str):
 
 
 def load_data(config, data_path, batch_size=1, num_workers=0, img_size=None):
-    """
-    Dynamically loads the datamodule from the YAML config.
-    """
+    
     data_module_name, class_name = config["data"]["class_path"].rsplit(".", 1)
     data_module_cls = getattr(importlib.import_module(data_module_name), class_name)
 
@@ -95,9 +93,7 @@ def build_model(
     reference_num_classes=None,
     num_q=None,
 ):
-    """
-    Dynamically builds the EoMT semantic model from config.
-    """
+    
     warnings.filterwarnings(
         "ignore",
         message=r".*Attribute 'network' is an instance of `nn\.Module` and is already saved during checkpointing.*",
@@ -170,9 +166,7 @@ def build_model(
 
 
 def load_weights(model, checkpoint_path, device):
-    """
-    Loads .ckpt or .bin weights 
-    """
+    
     ckpt = torch.load(
         checkpoint_path,
         map_location=device,
@@ -198,7 +192,7 @@ def load_weights(model, checkpoint_path, device):
 
 def infer_semantic(img, target, model, data, device):
     """
-    Runs EoMT semantic inference on one Cityscapes image.
+    Run EoMT semantic inference on one Cityscapes image.
 
     Returns:
         pred_array: predicted trainId mask, shape H x W
