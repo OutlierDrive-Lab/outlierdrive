@@ -1,14 +1,61 @@
-# Mask Architecture for Road Scenes
-This is the starting repository for two projects:
-- Mask Architecture Anomaly Segmentation for Road Scenes  [[Project Description](https://drive.google.com/file/d/1Vz08DHsP_mojpCTAQTR6NHVq-2rEqAZM/view?usp=sharing)]
-- Comprehensive Road Scene Understanding for Autonomous Driving  [[Project Description](https://drive.google.com/file/d/1tq5F_j_8O2vlGWbkU1ayPjYvCml1VEwr/view?usp=sharing)]
+# OutlierDrive: Open-World Road Anomaly Segmentation
 
-This repository consists of the code base for training/testing ERFNet on the Cityscapes dataset and perform anomaly segmentation. It also contains some code referring to EoMT. Some of this code may be unnecessary for your project.
+OutlierDrive studies anomaly segmentation for autonomous-driving scenes. The
+project compares pixel-based and mask-based models and evaluates how well they
+detect objects that are outside the training distribution.
 
-## Folders
-For instructions, please refer to the README in each folder:
+## Project Scope
 
-* [eval](eval) contains tools for evaluating/visualizing an ERFNet model's output and performing anomaly segmentation.
-* [trained_models](trained_models) Contains the ERFNet trained models for the baseline eval. 
-* [eomt](eomt) It is almost the original folder of the EoMT project. Inside it you will find code to train and pretrained checkpoints for EoMT.
+- ERFNet semantic segmentation and pixel-based anomaly scores
+- EoMT mask-based segmentation
+- Fine-tuning on Cityscapes
+- Evaluation on road-anomaly datasets
+- MSP, MaxLogit, Max Entropy, RbA, and temperature scaling
 
+## This Branch
+
+`feature/eomt-mask-baselines` is intended for the Step 8 EoMT anomaly
+experiments. The goal is to evaluate mask-based predictions from COCO-trained,
+Cityscapes-trained, and fine-tuned EoMT checkpoints on the same datasets used
+for the ERFNet baselines.
+
+The expected methods are:
+
+- MSP
+- MaxLogit
+- Max Entropy
+- RbA-style mask rejection
+
+AuPRC and FPR95 are used for anomaly segmentation, while Cityscapes mIoU is
+reported separately for the semantic quality of each checkpoint.
+
+## Branch Status
+
+This branch currently contains the base project code but does not contain the
+Step 8 runner or result tables. Those files are available in
+`origin/feature/step8-eomt-mask-baselines` under:
+
+```text
+step8_eomt_mask_baselines/
+```
+
+The Step 8 implementation should be merged or cherry-picked before documenting
+commands that refer to that folder.
+
+## Main Folders
+
+- [`eval`](eval): ERFNet evaluation and anomaly-segmentation code
+- [`trained_models`](trained_models): ERFNet checkpoint files
+- [`eomt`](eomt): EoMT training and inference code
+
+## Required Data
+
+- Cityscapes
+- RoadAnomaly21
+- RoadAnomaly
+- RoadObsticle21
+- Fishyscapes Static
+- Fishyscapes Lost & Found
+
+Datasets and EoMT checkpoint files are kept locally and are not committed to the
+repository.
