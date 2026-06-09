@@ -14,41 +14,22 @@ detect objects that are outside the training distribution.
 
 ## This Branch
 
-`feature/eomt-mask-baselines` is intended for the Step 8 EoMT anomaly
-experiments. The goal is to evaluate mask-based predictions from COCO-trained,
-Cityscapes-trained, and fine-tuned EoMT checkpoints on the same datasets used
-for the ERFNet baselines.
+`feature/erfnet-baselines` contains the Step 7 ERFNet experiments. It evaluates
+a pretrained ERFNet checkpoint with MSP, MaxLogit, and Max Entropy and reports
+AuPRC and FPR95.
 
-The expected methods are:
-
-- MSP
-- MaxLogit
-- Max Entropy
-- RbA-style mask rejection
-
-AuPRC and FPR95 are used for anomaly segmentation, while Cityscapes mIoU is
-reported separately for the semantic quality of each checkpoint.
-
-## Branch Status
-
-This branch currently contains the base project code but does not contain the
-Step 8 runner or result tables. Those files are available in
-`origin/feature/step8-eomt-mask-baselines` under:
-
-```text
-step8_eomt_mask_baselines/
-```
-
-The Step 8 implementation should be merged or cherry-picked before documenting
-commands that refer to that folder.
+The runner, usage instructions, and saved results are in
+[`step7_erfnet_pixel_baselines`](step7_erfnet_pixel_baselines).
 
 ## Main Folders
 
-- [`eval`](eval): ERFNet evaluation and anomaly-segmentation code
+- [`eval`](eval): original ERFNet evaluation code
 - [`trained_models`](trained_models): ERFNet checkpoint files
 - [`eomt`](eomt): EoMT training and inference code
+- [`step7_erfnet_pixel_baselines`](step7_erfnet_pixel_baselines): ERFNet anomaly
+  baseline runner and result table
 
-## Required Data
+## Datasets
 
 - Cityscapes
 - RoadAnomaly21
@@ -57,5 +38,7 @@ commands that refer to that folder.
 - Fishyscapes Static
 - Fishyscapes Lost & Found
 
-Datasets and EoMT checkpoint files are kept locally and are not committed to the
-repository.
+## Metrics
+
+- Semantic segmentation: mIoU
+- Anomaly segmentation: AuPRC and FPR95
