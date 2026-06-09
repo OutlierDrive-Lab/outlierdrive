@@ -1,44 +1,14 @@
-# OutlierDrive: Open-World Road Anomaly Segmentation
+# Mask Architecture for Road Scenes
+This is the starting repository for two projects:
+- Mask Architecture Anomaly Segmentation for Road Scenes  [[Project Description](https://drive.google.com/file/d/1Vz08DHsP_mojpCTAQTR6NHVq-2rEqAZM/view?usp=sharing)]
+- Comprehensive Road Scene Understanding for Autonomous Driving  [[Project Description](https://drive.google.com/file/d/1tq5F_j_8O2vlGWbkU1ayPjYvCml1VEwr/view?usp=sharing)]
 
-OutlierDrive studies anomaly segmentation for autonomous-driving scenes. The
-project compares pixel-based and mask-based models and evaluates how well they
-detect objects that are outside the training distribution.
+This repository consists of the code base for training/testing ERFNet on the Cityscapes dataset and perform anomaly segmentation. It also contains some code referring to EoMT. Some of this code may be unnecessary for your project.
 
-## Project Scope
+## Folders
+For instructions, please refer to the README in each folder:
 
-- ERFNet semantic segmentation and pixel-based anomaly scores
-- EoMT mask-based segmentation
-- Fine-tuning on Cityscapes
-- Evaluation on road-anomaly datasets
-- MSP, MaxLogit, Max Entropy, RbA, and temperature scaling
+* [eval](eval) contains tools for evaluating/visualizing an ERFNet model's output and performing anomaly segmentation.
+* [trained_models](trained_models) Contains the ERFNet trained models for the baseline eval. 
+* [eomt](eomt) It is almost the original folder of the EoMT project. Inside it you will find code to train and pretrained checkpoints for EoMT.
 
-## This Branch
-
-`feature/erfnet-baselines` contains the Step 7 ERFNet experiments. It evaluates
-a pretrained ERFNet checkpoint with MSP, MaxLogit, and Max Entropy and reports
-AuPRC and FPR95.
-
-The runner, usage instructions, and saved results are in
-[`step7_erfnet_pixel_baselines`](step7_erfnet_pixel_baselines).
-
-## Main Folders
-
-- [`eval`](eval): original ERFNet evaluation code
-- [`trained_models`](trained_models): ERFNet checkpoint files
-- [`eomt`](eomt): EoMT training and inference code
-- [`step7_erfnet_pixel_baselines`](step7_erfnet_pixel_baselines): ERFNet anomaly
-  baseline runner and result table
-
-## Datasets
-
-- Cityscapes
-- RoadAnomaly21
-- RoadAnomaly
-- RoadObsticle21
-- Fishyscapes Static
-- Fishyscapes Lost & Found
-
-## Metrics
-
-- Semantic segmentation: mIoU
-- Anomaly segmentation: AuPRC and FPR95

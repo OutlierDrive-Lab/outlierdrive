@@ -1,4 +1,4 @@
-"""Evaluate ERFNet with pixel-level anomaly scores.
+"""Evaluate ERFNet anomaly scores with optional temperature scaling.
 
 The dataset handling follows ``eval/evalAnomaly.py``, but this runner keeps the
 original evaluator unchanged and supports CPU execution.
@@ -63,7 +63,7 @@ def fpr_at_95_tpr(scores, labels):
     return float(fpr[np.argmax(tpr >= 0.95)])
 
 
-def compute_anomaly_score(logits, method):
+def compute_anomaly_score(logits, method, temperature=1.0):
     """
     Compute pixel-wise anomaly scores from ERFNet outputs.
 
@@ -72,6 +72,9 @@ def compute_anomaly_score(logits, method):
             torch.Tensor with shape [1, C, H, W].
         method:
             One of: msp, maxlogit, entropy.
+        temperature:
+            Softmax temperature used for MSP and Entropy.
+            Logits are divided by this value before softmax.
 
     Returns:
         np.ndarray with shape [H, W].
@@ -80,18 +83,23 @@ def compute_anomaly_score(logits, method):
     if logits.dim() != 4:
         raise ValueError(f"Expected logits with shape [B, C, H, W], got {logits.shape}")
 
+    if temperature <= 0:
+        raise ValueError("Temperature must be positive.")
+
+    scaled_logits = logits / temperature
+
     if method == "msp":
         # Low maximum confidence indicates an anomalous pixel.
-        probs = torch.softmax(logits, dim=1)
+        probs = torch.softmax(scaled_logits, dim=1)
         score = 1.0 - torch.max(probs, dim=1).values
 
     elif method == "maxlogit":
-        # Low maximum logit indicates an anomalous pixel.
+        # MaxLogit stays independent of temperature scaling.
         score = -torch.max(logits, dim=1).values
 
     elif method == "entropy":
         # High predictive uncertainty indicates an anomalous pixel.
-        probs = torch.softmax(logits, dim=1)
+        probs = torch.softmax(scaled_logits, dim=1)
         score = -torch.sum(probs * torch.log(probs + 1e-12), dim=1)
 
     else:
@@ -217,6 +225,13 @@ def main():
     )
 
     parser.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="Softmax temperature used for MSP/Entropy confidence calibration.",
+    )
+
+    parser.add_argument(
         "--dataset-name",
         default="unknown",
         help="Name of the evaluated anomaly dataset.",
@@ -237,6 +252,7 @@ def main():
     print(f"Using device: {device}")
     print(f"Using anomaly scoring method: {args.method}")
     print(f"Dataset name: {args.dataset_name}")
+    print(f"Using temperature: {args.temperature}")
 
     modelpath = os.path.join(args.loadDir, args.loadModel)
     weightspath = os.path.join(args.loadDir, args.loadWeights)
@@ -274,7 +290,11 @@ def main():
         with torch.no_grad():
             result = model(images)
 
-        anomaly_result = compute_anomaly_score(result, args.method)
+        anomaly_result = compute_anomaly_score(
+            result,
+            args.method,
+            temperature=args.temperature,
+        )
 
         path_gt = infer_ground_truth_path(path)
 
@@ -323,10 +343,15 @@ def main():
     print(f"AUPRC score: {auprc_percent}")
     print(f"FPR@TPR95: {fpr95_percent}")
 
+    method_label = args.method
+
+    if args.method in ["msp", "entropy"] and args.temperature != 1.0:
+        method_label = f"{args.method}_t{args.temperature}"
+
     append_result_to_csv(
         output_csv=args.output_csv,
         dataset_name=args.dataset_name,
-        method=args.method,
+        method=method_label,
         auprc=auprc_percent,
         fpr95=fpr95_percent,
     )
