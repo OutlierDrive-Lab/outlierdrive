@@ -1,54 +1,90 @@
-# Step 7 — ERFNet Pixel-Based Anomaly Baselines
+# Step 7 - ERFNet Baselines and Temperature Scaling
 
-This folder contains our implementation for Step 7 of the project: pixel-based anomaly segmentation baselines using a pretrained ERFNet model.
-
-## Goal
-
-The goal of this step is to evaluate a pretrained ERFNet semantic segmentation model on anomaly segmentation datasets using post-hoc anomaly scoring methods.
-
-## Original files
-
-The original provided file:
-
-`eval/evalAnomaly.py`
-
-is kept unchanged.
-
-Our implementation is provided as a separate runner:
-
-`step7_erfnet_pixel_baselines/run_erfnet_anomaly_cpu.py`
+This folder contains the ERFNet anomaly-segmentation experiments for Step 7.
+The runner supports the three pixel-based baselines and optional temperature
+scaling without changing the original evaluator in `eval/evalAnomaly.py`.
 
 ## Methods
 
-The runner supports the three required post-hoc anomaly scoring methods:
+ERFNet class logits are converted into a pixel-level anomaly score:
 
-- MSP
-- MaxLogit
-- Max Entropy
+- **MSP:** `1 - max(softmax(logits / T))`
+- **MaxLogit:** negative maximum class logit
+- **Max Entropy:** entropy of `softmax(logits / T)`
 
-## Datasets
+`T` is the temperature. A value of `1.0` gives the original baseline. MaxLogit
+uses raw logits and is therefore not affected by temperature scaling.
 
-The evaluation was run on the anomaly validation datasets:
+## Setup
 
-- RoadAnomaly21
-- RoadAnomaly
-- RoadObsticle21
-- fs_static
-- FS_LostFound_full
+Install the project dependencies and place the pretrained checkpoint at
+`trained_models/erfnet_pretrained.pth`.
 
-These correspond to the required anomaly benchmarks in the project.
+The anomaly datasets should contain matching image and mask folders:
 
-## Metrics
+```text
+Validation_Dataset/
+└── RoadAnomaly21/
+    ├── images/
+    └── labels_masks/
+```
 
-The reported metrics are:
+## Run a Baseline
 
-- AuPRC
-- FPR95
+```bash
+python step7_erfnet_pixel_baselines/run_erfnet_anomaly_cpu.py \
+  --input "Validation_Dataset/RoadAnomaly21/images/*.png" \
+  --loadDir trained_models \
+  --loadModel erfnet.py \
+  --loadWeights erfnet_pretrained.pth \
+  --dataset-name RoadAnomaly21 \
+  --method maxlogit \
+  --cpu
+```
+
+Available methods are `msp`, `maxlogit`, and `entropy`. Remove `--cpu` to use
+CUDA when it is available.
+
+## Run Temperature Scaling
+
+Pass `--temperature` with MSP or entropy:
+
+```bash
+python step7_erfnet_pixel_baselines/run_erfnet_anomaly_cpu.py \
+  --input "Validation_Dataset/RoadAnomaly21/images/*.png" \
+  --loadDir trained_models \
+  --loadModel erfnet.py \
+  --loadWeights erfnet_pretrained.pth \
+  --dataset-name RoadAnomaly21 \
+  --method msp \
+  --temperature 0.75 \
+  --output-csv step7_erfnet_pixel_baselines/erfnet_temperature_results.csv \
+  --cpu
+```
+
+The committed sweep uses `T = 0.5`, `0.75`, `1.0`, and `1.1` on five anomaly
+datasets.
 
 ## Results
 
-The results are saved in:
+Baseline results are stored in:
 
-`step7_erfnet_pixel_baselines/erfnet_anomaly_results.csv`
+```text
+step7_erfnet_pixel_baselines/erfnet_anomaly_results.csv
+```
 
-In the current ERFNet experiments, MaxLogit performs better than MSP and Max Entropy on most datasets.
+Temperature-scaling results are stored in:
+
+```text
+step7_erfnet_pixel_baselines/erfnet_temperature_results.csv
+```
+
+Both files use the same columns:
+
+```csv
+model,dataset,method,auprc,fpr95
+```
+
+For scaled runs, the method name includes the temperature, for example
+`msp_t0.75`. The folder name `RoadObsticle21` follows the spelling used in the
+provided dataset archive.

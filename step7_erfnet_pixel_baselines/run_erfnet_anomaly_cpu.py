@@ -1,15 +1,8 @@
-# ERFNet anomaly segmentation evaluation runner.
-#
-# This script is based on the evaluation logic provided in eval/evalAnomaly.py,
-# but it is placed under scripts/ as our own runner so that the original
-# provided file remains unchanged.
-#
-# Main features:
-# 1. CPU/Mac compatible execution.
-# 2. No dependency on ood_metrics.
-# 3. Local implementation of FPR@95TPR using sklearn.
-# 4. Supports MSP, MaxLogit, and Max Entropy anomaly scoring.
-# 5. Saves results to a CSV file.
+"""Evaluate ERFNet anomaly scores with optional temperature scaling.
+
+The dataset handling follows ``eval/evalAnomaly.py``, but this runner keeps the
+original evaluator unchanged and supports CPU execution.
+"""
 
 import os
 import sys
@@ -20,8 +13,7 @@ from PIL import Image
 import numpy as np
 from argparse import ArgumentParser
 
-# The original ERFNet implementation is inside eval/erfnet.py.
-# Since this script is inside scripts/, we add eval/ to Python path.
+# Import the ERFNet definition from the original evaluation folder.
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "eval"))
 from erfnet import ERFNet
 
@@ -71,10 +63,6 @@ def fpr_at_95_tpr(scores, labels):
     return float(fpr[np.argmax(tpr >= 0.95)])
 
 
-# ERFNet returns per-class pixel scores.
-# For anomaly segmentation, we do not train a new anomaly class.
-# Instead, post-hoc methods convert the model output into one anomaly score per pixel.
-# Higher anomaly score means the pixel is more likely to be out-of-distribution.
 def compute_anomaly_score(logits, method, temperature=1.0):
     """
     Compute pixel-wise anomaly scores from ERFNet outputs.
@@ -101,19 +89,16 @@ def compute_anomaly_score(logits, method, temperature=1.0):
     scaled_logits = logits / temperature
 
     if method == "msp":
-        # MSP uses calibrated softmax probabilities.
-        # Lower confidence means higher anomaly score.
+        # Low maximum confidence indicates an anomalous pixel.
         probs = torch.softmax(scaled_logits, dim=1)
         score = 1.0 - torch.max(probs, dim=1).values
 
     elif method == "maxlogit":
-        # MaxLogit works directly on raw logits, so we keep it independent
-        # from temperature scaling.
+        # MaxLogit stays independent of temperature scaling.
         score = -torch.max(logits, dim=1).values
 
     elif method == "entropy":
-        # Entropy measures uncertainty in the softmax distribution.
-        # Higher entropy means the model is more uncertain.
+        # High predictive uncertainty indicates an anomalous pixel.
         probs = torch.softmax(scaled_logits, dim=1)
         score = -torch.sum(probs * torch.log(probs + 1e-12), dim=1)
 
@@ -147,9 +132,6 @@ def load_my_state_dict(model, state_dict):
     return model
 
 
-# The anomaly datasets do not all use the same label encoding.
-# This helper normalizes the masks into one common binary convention:
-# 1 = anomaly/OOD pixel, 0 = normal in-distribution pixel, 255 = ignored pixel.
 def prepare_ground_truth_mask(path_gt):
     """
     Load and convert the anomaly ground-truth mask into binary format.
@@ -179,9 +161,6 @@ def prepare_ground_truth_mask(path_gt):
     return ood_gts
 
 
-# Each anomaly image has a corresponding mask in labels_masks/.
-# Some datasets store images as jpg/webp while the masks are png, so we fix
-# the extension here before loading the ground-truth mask.
 def infer_ground_truth_path(image_path):
     """
     Infer the corresponding ground-truth mask path from the image path.
@@ -204,8 +183,6 @@ def infer_ground_truth_path(image_path):
     return path_gt
 
 
-# Store every run as a CSV row so results from multiple datasets and methods
-# can be directly used in the final project table.
 def append_result_to_csv(output_csv, dataset_name, method, auprc, fpr95):
     """
     Append one experiment result to a CSV file.
@@ -344,8 +321,7 @@ def main():
     ood_gts = np.array(ood_gts_list)
     anomaly_scores = np.array(anomaly_score_list)
 
-    # OOD pixels are positives, normal pixels are negatives.
-    # Ignore pixels are excluded because they are neither OOD nor in-distribution.
+    # Ignore label 255; OOD pixels are the positive class.
     ood_mask = ood_gts == 1
     ind_mask = ood_gts == 0
 
@@ -358,8 +334,6 @@ def main():
     val_out = np.concatenate((ind_out, ood_out))
     val_label = np.concatenate((ind_label, ood_label))
 
-    # AuPRC is important for anomaly segmentation because anomaly pixels are rare.
-    # FPR95 measures the false-positive rate when 95% of anomaly pixels are detected.
     prc_auc = average_precision_score(val_label, val_out)
     fpr95 = fpr_at_95_tpr(val_out, val_label)
 
@@ -369,15 +343,11 @@ def main():
     print(f"AUPRC score: {auprc_percent}")
     print(f"FPR@TPR95: {fpr95_percent}")
 
-    # Store every run as a CSV row so results from multiple datasets and methods
-    # can be directly used in the final project table.
     method_label = args.method
 
     if args.method in ["msp", "entropy"] and args.temperature != 1.0:
         method_label = f"{args.method}_t{args.temperature}"
 
-    # Store every run as a CSV row so results from multiple datasets and methods
-    # can be directly used in the final project table.
     append_result_to_csv(
         output_csv=args.output_csv,
         dataset_name=args.dataset_name,
