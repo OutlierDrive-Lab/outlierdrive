@@ -1,0 +1,137 @@
+\title{Comprehensive Road Scene Understanding for Autonomous Driving}
+
+\author{%
+Group XX \\
+Name Surname, Name Surname, Name Surname, Name Surname \\
+Politecnico di Torino
+}
+
+\maketitle
+
+\begin{abstract}
+This project studies road-scene understanding for autonomous driving, moving from closed-set semantic segmentation to open-world anomaly segmentation. We compare EoMT checkpoints trained on COCO, Cityscapes, and a fine-tuned Cityscapes setup, and evaluate post-hoc anomaly scoring methods on the SegmentMeIfYouCan, Fishyscapes, and Road Anomaly validation datasets. For semantic segmentation, the Cityscapes-trained EoMT reaches 81.68\% mIoU on all 19 Cityscapes classes, while the COCO-trained model reaches 62.86\% mIoU on the mapped Cityscapes overlap classes. For anomaly segmentation, the best EoMT result is obtained with the Cityscapes checkpoint and entropy scoring on RoadObstacle21, reaching 94.28 AuPRC and 0.35 FPR95. Temperature scaling was evaluated for MSP with $T \in \{0.5,0.75,1.0,1.1\}$; it produced only small changes, with $T=1.1$ giving the best average MSP performance in most checkpoints. Code and full result CSVs are available at \url{https://github.com/OutlierDrive-Lab/outlierdrive}.
+\end{abstract}
+
+\section{Introduction}
+Autonomous driving perception systems must understand road scenes at pixel level. Semantic segmentation assigns a class label to each pixel, while instance and panoptic segmentation additionally distinguish object instances. These tasks work well when test images follow the training distribution, but real driving scenes may contain rare or unknown objects that are not present during training. This motivates anomaly segmentation, where the objective is to detect out-of-distribution objects in road scenes.
+
+The project follows this progression. We first studied standard semantic and panoptic segmentation models, then compared two EoMT checkpoints trained on different label spaces, and finally evaluated post-hoc anomaly scoring methods. The final focus of our implementation is mask-based anomaly segmentation with EoMT, evaluated on the same anomaly validation datasets used for the pixel-based ERFNet baselines.
+
+\section{Methodology}
+\subsection{Semantic Segmentation Evaluation}
+We evaluated EoMT on Cityscapes validation data. For the Cityscapes-trained checkpoint, predictions are already expressed in the 19 Cityscapes trainId classes. For the COCO-trained checkpoint, the output class space is different, so predictions were mapped to the Cityscapes classes that overlap with COCO. This makes the COCO comparison meaningful, but it is not a full 19-class Cityscapes evaluation because classes such as pole, terrain, and rider are not covered by the mapping.
+
+The semantic metric is mean Intersection over Union (mIoU). The confusion matrix is accumulated over validation pixels, ignoring label 255. For class $c$, IoU is
+\[
+\mathrm{IoU}_c = \frac{\mathrm{TP}_c}{\mathrm{TP}_c + \mathrm{FP}_c + \mathrm{FN}_c},
+\]
+and mIoU is the average across the evaluated classes.
+
+\subsection{EoMT Mask-Based Anomaly Pipeline}
+For anomaly segmentation, we use the EoMT semantic inference path: each image is processed with sliding-window inference, the model returns mask logits and class logits, and these are converted to per-pixel semantic logits using EoMT's semantic aggregation helper. The anomaly datasets are read directly from their image and binary mask folders rather than through the Cityscapes datamodule.
+
+We evaluated three checkpoints:
+\begin{itemize}
+    \item COCO-trained EoMT,
+    \item Cityscapes-trained EoMT,
+    \item fine-tuned EoMT.
+\end{itemize}
+Each checkpoint was evaluated on five anomaly datasets: RoadAnomaly21, RoadObstacle21, RoadAnomaly, Fishyscapes Static, and FS Lost \& Found.
+
+\subsection{Anomaly Scores}
+We compared four post-hoc anomaly scores. MSP uses the confidence of the most likely class:
+\[
+s_{\mathrm{MSP}}(x) = 1 - \max_c p(c \mid x).
+\]
+MaxLogit uses the negative maximum logit, so lower classification evidence gives a higher anomaly score. Entropy measures predictive uncertainty:
+\[
+s_{\mathrm{Ent}}(x) = -\sum_c p(c \mid x)\log p(c \mid x).
+\]
+Finally, the RbA-style score uses the mask-query outputs before final semantic aggregation. It measures how strongly a pixel is rejected by all known query/class predictions, which is more specific to a mask-based architecture than MSP or MaxLogit.
+
+\subsection{Temperature Scaling}
+The project specification also asks for temperature scaling. We applied temperature scaling to MSP by replacing the softmax with
+\[
+p_T(c \mid x) = \mathrm{softmax}(z_c/T).
+\]
+We evaluated $T=0.5, 0.75, 1.0,$ and $1.1$ for all three EoMT checkpoints and all five anomaly datasets. The implementation computes all temperatures from the same logits, so the model forward pass is not repeated unnecessarily.
+
+\section{Experimental Results}
+\subsection{Semantic Segmentation}
+Table~\ref{tab:semantic} reports the semantic segmentation numbers used to contextualize the EoMT checkpoints. The all-19-class result is only reported for the Cityscapes class space. The COCO result is reported on the mapped overlap classes, so it should not be interpreted as a full 19-class Cityscapes score.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc}
+\hline
+Evaluation & mIoU (\%) & Pixel Acc. (\%) \\
+\hline
+Cityscapes, all 19 classes & 81.68 & 96.72 \\
+Cityscapes checkpoint, overlap classes & 84.78 & 97.13 \\
+COCO checkpoint, mapped overlap classes & 62.86 & 90.68 \\
+\hline
+\end{tabular}
+\caption{Semantic segmentation evaluation on Cityscapes. The COCO number uses only mapped overlap classes.}
+\label{tab:semantic}
+\end{table}
+
+\subsection{Anomaly Segmentation}
+The anomaly benchmark contains 60 rows: 3 checkpoints, 5 datasets, and 4 scoring methods. Table~\ref{tab:anomaly-average} summarizes the average behavior over the five datasets. The Cityscapes checkpoint is the most stable overall. Its entropy score gives the best mean AuPRC, while all Cityscapes-based scores are close to each other. The COCO checkpoint performs poorly on most anomaly datasets, which is expected because its class space and training data are less aligned with road scenes.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llcc}
+\hline
+Checkpoint & Score & Mean AuPRC & Mean FPR95 \\
+\hline
+COCO & MSP & 13.75 & 93.21 \\
+COCO & Entropy & 16.25 & 89.53 \\
+Cityscapes & MSP & 61.64 & 20.54 \\
+Cityscapes & Entropy & 62.55 & 20.46 \\
+Fine-tuned & MSP & 50.55 & 27.93 \\
+Fine-tuned & Entropy & 50.20 & 29.41 \\
+\hline
+\end{tabular}
+\caption{Unweighted mean anomaly performance over the five validation datasets. Higher AuPRC is better; lower FPR95 is better. Full per-dataset results are included in the repository CSV files.}
+\label{tab:anomaly-average}
+\end{table}
+
+The strongest individual anomaly result is on RoadObstacle21, where the Cityscapes checkpoint with entropy reaches 94.28 AuPRC and 0.35 FPR95. The same checkpoint is also strong on RoadAnomaly, where entropy reaches 74.19 AuPRC and 14.69 FPR95. For RoadAnomaly21 and Fishyscapes Static, the fine-tuned checkpoint performs best, reaching 70.77 AuPRC with MSP on RoadAnomaly21 and 71.60 AuPRC with entropy on Fishyscapes Static.
+
+\subsection{Temperature Scaling}
+Table~\ref{tab:temperature} reports the average MSP behavior with temperature scaling. The effect is small. For the Cityscapes checkpoint, $T=1.1$ gives the best average AuPRC, but the difference from $T=1.0$ is minor. This suggests that the ranking induced by MSP is already quite stable for these logits, and temperature scaling alone is not enough to substantially change anomaly segmentation performance.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\hline
+Checkpoint & Best $T$ & Mean AuPRC & Mean FPR95 \\
+\hline
+COCO & 1.1 & 13.76 & 93.20 \\
+Cityscapes & 1.1 & 61.66 & 20.54 \\
+Fine-tuned & 1.1 & 50.55 & 27.93 \\
+\hline
+\end{tabular}
+\caption{Best average MSP temperature per checkpoint over the five anomaly datasets.}
+\label{tab:temperature}
+\end{table}
+
+\section{Discussion}
+The results show that training domain and label space strongly affect anomaly segmentation. The COCO checkpoint is useful for broad visual recognition, but its panoptic class space does not align well with road-scene anomaly detection. The Cityscapes checkpoint gives the best overall anomaly results because it has learned a road-scene representation closer to the validation data.
+
+The fine-tuned checkpoint improves some datasets but is not uniformly better. This is consistent with the semantic segmentation discussion: fine-tuning with limited resources can improve domain adaptation, but it does not guarantee a stronger model on every metric or dataset. In our anomaly results, fine-tuning helps RoadAnomaly21 and Fishyscapes Static, while the original Cityscapes checkpoint remains stronger on RoadObstacle21 and RoadAnomaly.
+
+Among post-hoc methods, entropy is generally competitive because it captures uncertainty across all classes rather than only the top class. MSP and MaxLogit are simpler and often close to entropy, but they can fail when the model is confidently wrong. The RbA-style score is conceptually better matched to a mask-based model because it uses query-level mask and class outputs, although in our results it does not consistently dominate the simpler uncertainty scores.
+
+Temperature scaling was included as an additional baseline. The results show only small changes across $T=0.5,0.75,1.0,1.1$. This means it is useful to report, but it should not be presented as the main source of improvement. A more substantial improvement would likely require training-time changes or a stronger anomaly-specific scoring method.
+
+\section{Conclusion}
+We implemented and evaluated a reproducible EoMT mask-based anomaly segmentation pipeline. The best anomaly result was obtained by the Cityscapes checkpoint with entropy scoring on RoadObstacle21, reaching 94.28 AuPRC and 0.35 FPR95. Across datasets, the Cityscapes checkpoint was the most reliable, while the fine-tuned checkpoint improved selected datasets but was not uniformly superior. Temperature scaling completed the required baseline and showed that MSP is only weakly affected by the tested temperatures.
+
+{\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{references}
+}
