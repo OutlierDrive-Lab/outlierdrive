@@ -63,6 +63,31 @@ class LightningModule(lightning.LightningModule):
         super().__init__()
 
         self.network = network
+        # My Changes : freezing all layers except the head
+        for param in self.network.parameters():
+           param.requires_grad = False
+
+        for name, param in self.network.named_parameters():
+            if (
+                name.startswith("class_head")
+                or name.startswith("mask_head")
+                or name.startswith("upscale")
+                or name.startswith("q")
+                or name.startswith("encoder.backbone.blocks.10.attn")
+                or name.startswith("encoder.backbone.blocks.11.attn")
+            ):
+                param.requires_grad = True
+
+            #if name.startswith("class_head") or name.startswith("mask_head") or name.startswith("upscale") or name.startswith("q"):
+                #param.requires_grad = True
+
+        print("Trainable parameters:")
+        for name, param in self.network.named_parameters():
+            if param.requires_grad:
+                print(name)
+
+        # -------- END of my changes
+
         self.img_size = img_size
         self.num_classes = num_classes
         self.attn_mask_annealing_enabled = attn_mask_annealing_enabled
@@ -113,6 +138,13 @@ class LightningModule(lightning.LightningModule):
         ).tolist()
 
         for name, param in reversed(list(self.named_parameters())):
+            
+            # MY CHANGES
+            # Skip frozen parameters
+            if not param.requires_grad:
+                continue
+            #END MY CHNAGES
+
             lr = self.lr
 
             if name.replace("network.encoder.backbone.", "") in encoder_param_names:
@@ -139,6 +171,11 @@ class LightningModule(lightning.LightningModule):
                     and ((not self.llrd_l2_enabled) or (self.lr_mult != 1.0))
                 ):
                     lr = self.lr
+                #MY CHNGAES
+                if ".attn.qkv." in name or ".attn.proj." in name:
+                    lr *= 0.1   
+
+                #END MY CHANGES
 
                 backbone_param_groups.append(
                     {"params": [param], "lr": lr, "name": name}
@@ -149,6 +186,12 @@ class LightningModule(lightning.LightningModule):
                 )
 
         param_groups = backbone_param_groups + other_param_groups
+        #MY CHNGAES
+        print("Optimizer parameter groups:")
+        for group in param_groups:
+            print(group["name"], "lr =", group["lr"])
+
+        #END MY CHANGES
         optimizer = AdamW(param_groups, weight_decay=self.weight_decay)
 
         scheduler = TwoStageWarmupPolySchedule(
