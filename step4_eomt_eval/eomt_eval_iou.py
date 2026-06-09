@@ -299,7 +299,7 @@ def save_results_csv(class_iou, mean_iou, pixel_accuracy, csv_path):
                 class_iou[class_id] * 100,
             ])
 
-        writer.writerow([])
+        #writer.writerow([])
         writer.writerow(["mIoU (%)", mean_iou * 100])
         writer.writerow(["Pixel Accuracy (%)", pixel_accuracy * 100])
 
