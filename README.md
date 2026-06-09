@@ -1,7 +1,7 @@
-# OutlierDrive: Open-World Road Anomaly Segmentation
+# OutlierDrive:  Road Anomaly Segmentation
 
-OutlierDrive is a research-oriented computer vision project focused on anomaly segmentation for autonomous driving scenes.  
-The project compares pixel-based and mask-based segmentation models for detecting unknown or out-of-distribution objects in road environments.
+OutlierDrive is a research oriented computer vision project focused on anomaly segmentation for autonomous driving scenes.  
+The project compares pixel based and mask based segmentation models for detecting unknown objects in road environments.
 
 ## Goals
 
@@ -44,6 +44,3 @@ Main branches:
 - `feature/eomt-mask-baselines`
 - `feature/finetuning-report`
 
-## Repository Status
-
-This repository is under active development as part of a graduate-level computer vision project at Politecnico di Torino.
