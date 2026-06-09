@@ -344,7 +344,6 @@ def main():
     ood_gts = np.array(ood_gts_list)
     anomaly_scores = np.array(anomaly_score_list)
 
-    # Evaluation is done as binary pixel-level anomaly detection.
     # OOD pixels are positives, normal pixels are negatives.
     # Ignore pixels are excluded because they are neither OOD nor in-distribution.
     ood_mask = ood_gts == 1

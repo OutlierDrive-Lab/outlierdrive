@@ -1,4 +1,4 @@
-model,dataset,method,auprc,fpr95
+cat step7_erfnet_pixel_baselines/erfnet_temperature_results.csvmodel,dataset,method,auprc,fpr95
 ERFNet,RoadAnomaly21,maxlogit,38.31958324026793,59.33707908692559
 ERFNet,RoadAnomaly21,msp,29.09512513732962,62.54915982652598
 ERFNet,RoadAnomaly21,entropy,30.96861282721754,62.65845671952056
