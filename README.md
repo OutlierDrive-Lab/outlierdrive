@@ -1,14 +1,46 @@
-# Mask Architecture for Road Scenes
-This is the starting repository for two projects:
-- Mask Architecture Anomaly Segmentation for Road Scenes  [[Project Description](https://drive.google.com/file/d/1Vz08DHsP_mojpCTAQTR6NHVq-2rEqAZM/view?usp=sharing)]
-- Comprehensive Road Scene Understanding for Autonomous Driving  [[Project Description](https://drive.google.com/file/d/1tq5F_j_8O2vlGWbkU1ayPjYvCml1VEwr/view?usp=sharing)]
+# OutlierDrive:  Road Anomaly Segmentation
 
-This repository consists of the code base for training/testing ERFNet on the Cityscapes dataset and perform anomaly segmentation. It also contains some code referring to EoMT. Some of this code may be unnecessary for your project.
+OutlierDrive is a research oriented computer vision project focused on anomaly segmentation for autonomous driving scenes.  
+The project compares pixel based and mask based segmentation models for detecting unknown objects in road environments.
 
-## Folders
-For instructions, please refer to the README in each folder:
+## Goals
 
-* [eval](eval) contains tools for evaluating/visualizing an ERFNet model's output and performing anomaly segmentation.
-* [trained_models](trained_models) Contains the ERFNet trained models for the baseline eval. 
-* [eomt](eomt) It is almost the original folder of the EoMT project. Inside it you will find code to train and pretrained checkpoints for EoMT.
+- Study semantic, instance, and panoptic segmentation
+- Compare ERFNet and EoMT on road-scene understanding
+- Evaluate post-hoc anomaly segmentation methods
+- Fine-tune a COCO-pretrained EoMT model on Cityscapes
+- Analyze MSP, MaxLogit, Max Entropy, RbA, and temperature scaling
+
+## Models
+
+- ERFNet
+- EoMT
+- MaskFormer / Mask2Former concepts
+- DINOv2-based segmentation architecture
+
+## Datasets
+
+- Cityscapes
+- SegmentMeIfYouCan
+- Fishyscapes
+- Road Anomaly
+
+## Evaluation
+
+Semantic segmentation:
+- mIoU
+
+Anomaly segmentation:
+- AuPRC
+- FPR95
+
+## Team Workflow
+
+Development is organized through feature branches and pull requests.
+
+Main branches:
+- `feature/data-evaluation-pipeline`
+- `feature/erfnet-baselines`
+- `feature/eomt-mask-baselines`
+- `feature/finetuning-report`
 
