@@ -37,7 +37,7 @@ Each stage contains its own README with setup and execution details.
 - EoMT with a DINOv2 backbone
 - COCO-trained EoMT
 - Cityscapes-trained EoMT
-- EoMT fine-tuned on Cityscapes
+- COCO-trained EoMT fine-tuned on Cityscapes
 
 ## Datasets
 
